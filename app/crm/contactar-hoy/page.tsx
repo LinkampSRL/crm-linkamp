@@ -4,6 +4,7 @@ import StatusBadge from '@/components/StatusBadge'
 import WhatsAppButton from '@/components/WhatsAppButton'
 import LeadModal from '@/components/LeadModal'
 import { ESTADOS } from '@/lib/estados'
+import { PRODUCTO_CATEGORIAS, RESPONSABLES } from '@/lib/types'
 import type { Lead, LeadEstado, Template } from '@/lib/types'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -39,6 +40,8 @@ export default function ContactarHoyPage() {
   const [loading, setLoading]           = useState(true)
   const [updating, setUpdating]         = useState<string | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [filtroProducto, setFiltroProducto]       = useState('')
+  const [filtroResponsable, setFiltroResponsable] = useState('')
 
   const hoy = new Date().toISOString()
   const todayLabel = format(new Date(), "EEEE d 'de' MMMM", { locale: es })
@@ -50,7 +53,6 @@ export default function ContactarHoyPage() {
     ])
     if (leadsRes.ok) {
       const data: Lead[] = await leadsRes.json()
-      // Ordenar por proximo_contacto ascendente, nulls al inicio
       data.sort((a, b) => {
         if (!a.proximo_contacto) return -1
         if (!b.proximo_contacto) return 1
@@ -64,11 +66,23 @@ export default function ContactarHoyPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const contactarHoy = leads.filter(l => {
+  // Base: leads que corresponde contactar hoy
+  const contactarHoyBase = leads.filter(l => {
     if (CLOSED.has(l.estado)) return false
     if (l.estado === 'Pendiente de contacto') return true
     return l.proximo_contacto ? l.proximo_contacto <= hoy : false
   })
+
+  // Aplicar filtros de producto y responsable
+  const contactarHoy = contactarHoyBase.filter(l => {
+    const matchProducto    = !filtroProducto || (filtroProducto === '__sin__' ? !l.producto_categoria : l.producto_categoria === filtroProducto)
+    const matchResponsable = !filtroResponsable || (filtroResponsable === '__sin__' ? !l.responsable : l.responsable === filtroResponsable)
+    return matchProducto && matchResponsable
+  })
+
+  // Resetear índice cuando cambian los filtros
+  const handleFiltroProducto = (val: string) => { setFiltroProducto(val); setCurrentIndex(0) }
+  const handleFiltroResponsable = (val: string) => { setFiltroResponsable(val); setCurrentIndex(0) }
 
   const msg1 = templates.find(t => t.id === 'mensaje_1') || null
   const msg2 = templates.find(t => t.id === 'mensaje_2') || null
@@ -85,7 +99,6 @@ export default function ContactarHoyPage() {
       body: JSON.stringify({ estado: newEstado }),
     })
     setUpdating(null)
-    // Resetear índice y recargar para evitar desincronización (bug C3)
     setCurrentIndex(0)
     fetchData()
   }
@@ -100,9 +113,11 @@ export default function ContactarHoyPage() {
 
   const leadActual = contactarHoy[currentIndex] || null
 
+  const selectCls = 'border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-petrol-500 bg-white'
+
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Contactar hoy</h1>
           <p className="text-sm text-gray-500 capitalize mt-0.5">{todayLabel}</p>
@@ -124,13 +139,39 @@ export default function ContactarHoyPage() {
         )}
       </div>
 
+      {/* ── Filtros ── */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <select
+          value={filtroProducto}
+          onChange={e => handleFiltroProducto(e.target.value)}
+          className={selectCls}
+        >
+          <option value="">Todos los productos</option>
+          {PRODUCTO_CATEGORIAS.map(p => <option key={p} value={p}>{p}</option>)}
+          <option value="__sin__">Sin producto</option>
+        </select>
+        <select
+          value={filtroResponsable}
+          onChange={e => handleFiltroResponsable(e.target.value)}
+          className={selectCls}
+        >
+          <option value="">Todos los responsables</option>
+          {RESPONSABLES.map(r => <option key={r} value={r}>{r}</option>)}
+          <option value="__sin__">Sin asignar</option>
+        </select>
+      </div>
+
       {loading ? (
         <div className="text-center py-16 text-gray-400">Cargando...</div>
       ) : contactarHoy.length === 0 ? (
         <div className="text-center py-20">
           <div className="text-5xl mb-3">🎉</div>
           <p className="text-xl font-semibold text-gray-700">¡Todo al día!</p>
-          <p className="text-gray-500 mt-1">No tenés leads para contactar hoy.</p>
+          <p className="text-gray-500 mt-1">
+            {filtroProducto || filtroResponsable
+              ? 'No hay leads para contactar con los filtros seleccionados.'
+              : 'No tenés leads para contactar hoy.'}
+          </p>
         </div>
       ) : leadActual ? (
         <>
@@ -147,6 +188,8 @@ export default function ContactarHoyPage() {
                   <span>📞 {leadActual.telefono}</span>
                   {leadActual.ciudad_provincia && <span>📍 {leadActual.ciudad_provincia}</span>}
                   {leadActual.email && <span>✉️ {leadActual.email}</span>}
+                  <span>🏷 {leadActual.producto_categoria || 'Sin producto'}</span>
+                  <span>👤 {leadActual.responsable || 'Sin asignar'}</span>
                   {leadActual.proximo_contacto && (
                     <span className={dateAlertClass(leadActual.proximo_contacto)}>
                       🗓 {fmtDate(leadActual.proximo_contacto)}
@@ -207,11 +250,19 @@ export default function ContactarHoyPage() {
                       <span className="font-medium text-sm text-gray-800">
                         {lead.empresa ? `${lead.empresa} — ` : ''}{lead.nombre}
                       </span>
-                      {lead.proximo_contacto && (
-                        <span className={`ml-2 text-xs ${dateAlertClass(lead.proximo_contacto)}`}>
-                          {fmtDate(lead.proximo_contacto)}
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                        <span className="text-xs text-gray-400">
+                          {lead.producto_categoria || 'Sin producto'}
                         </span>
-                      )}
+                        <span className="text-xs text-gray-400">
+                          {lead.responsable || 'Sin asignar'}
+                        </span>
+                        {lead.proximo_contacto && (
+                          <span className={`text-xs ${dateAlertClass(lead.proximo_contacto)}`}>
+                            {fmtDate(lead.proximo_contacto)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <StatusBadge estado={lead.estado} />
                   </div>

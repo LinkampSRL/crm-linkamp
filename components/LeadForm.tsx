@@ -2,7 +2,8 @@
 import { useState } from 'react'
 import { ESTADOS } from '@/lib/estados'
 import LeadHistoryPanel from './LeadHistory'
-import type { Lead, LeadEstado, LeadOrigen } from '@/lib/types'
+import type { Lead, LeadEstado, LeadOrigen, ProductoCategoria } from '@/lib/types'
+import { PRODUCTO_CATEGORIAS, RESPONSABLES } from '@/lib/types'
 
 const ORIGENES: LeadOrigen[] = [
   'Meta', 'Web', 'WhatsApp', 'Referido', 'Agrofy',
@@ -22,6 +23,7 @@ type FormData = {
   email: string
   ciudad_provincia: string
   producto_consultado: string
+  producto_categoria: ProductoCategoria | ''
   origen: LeadOrigen | ''
   observaciones: string
   responsable: string
@@ -37,6 +39,7 @@ export default function LeadForm({ lead, onSaved, onCancel }: Props) {
     email:               lead?.email || '',
     ciudad_provincia:    lead?.ciudad_provincia || '',
     producto_consultado: lead?.producto_consultado || '',
+    producto_categoria:  lead?.producto_categoria || '',
     origen:              lead?.origen || '',
     observaciones:       lead?.observaciones || '',
     responsable:         lead?.responsable || '',
@@ -65,9 +68,10 @@ export default function LeadForm({ lead, onSaved, onCancel }: Props) {
       email:               form.email.trim() || null,
       ciudad_provincia:    form.ciudad_provincia.trim() || null,
       producto_consultado: form.producto_consultado.trim() || null,
+      producto_categoria:  form.producto_categoria || null,
       origen:              form.origen || null,
       observaciones:       form.observaciones.trim() || null,
-      responsable:         form.responsable.trim() || null,
+      responsable:         form.responsable || null,
       estado:              form.estado,
     }
 
@@ -123,6 +127,13 @@ export default function LeadForm({ lead, onSaved, onCancel }: Props) {
           <input className={input} value={form.producto_consultado} onChange={e => set('producto_consultado', e.target.value)} placeholder="Balanza portátil pesaje por ejes" />
         </div>
         <div>
+          <label className={label}>Categoría de producto</label>
+          <select className={input} value={form.producto_categoria} onChange={e => set('producto_categoria', e.target.value)}>
+            <option value="">— Seleccionar —</option>
+            {PRODUCTO_CATEGORIAS.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+        <div>
           <label className={label}>Origen</label>
           <select className={input} value={form.origen} onChange={e => set('origen', e.target.value)}>
             <option value="">— Seleccionar —</option>
@@ -131,7 +142,10 @@ export default function LeadForm({ lead, onSaved, onCancel }: Props) {
         </div>
         <div>
           <label className={label}>Responsable</label>
-          <input className={input} value={form.responsable} onChange={e => set('responsable', e.target.value)} placeholder="Tu nombre" />
+          <select className={input} value={form.responsable} onChange={e => set('responsable', e.target.value)}>
+            <option value="">— Sin asignar —</option>
+            {RESPONSABLES.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
         </div>
         {isEdit && (
           <div>

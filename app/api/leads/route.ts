@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
     email:               body.email               ?? null,
     ciudad_provincia:    body.ciudad_provincia     ?? null,
     producto_consultado: body.producto_consultado  ?? null,
+    producto_categoria:  body.producto_categoria   ?? null,
     origen:              body.origen               ?? null,
     fecha_ingreso:       body.fecha_ingreso        || new Date().toISOString().split('T')[0],
     estado:              body.estado               || 'Pendiente de contacto',

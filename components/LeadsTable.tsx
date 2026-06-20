@@ -29,6 +29,7 @@ function dateAlertClass(iso: string | null, estado: LeadEstado): string {
 
 export default function LeadsTable({ leads, templates, onEdit, onRefresh }: Props) {
   const [updating, setUpdating] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   const msg1 = templates.find(t => t.id === 'mensaje_1') || null
 
@@ -40,6 +41,18 @@ export default function LeadsTable({ leads, templates, onEdit, onRefresh }: Prop
       body:    JSON.stringify({ estado: newEstado }),
     })
     setUpdating(null)
+    onRefresh()
+  }
+
+  async function deleteLead(lead: Lead) {
+    const confirmed = window.confirm(
+      `¿Seguro que querés borrar el lead de "${lead.empresa || lead.nombre}"?\n\nEsta acción no se puede deshacer.`
+    )
+    if (!confirmed) return
+
+    setDeleting(lead.id)
+    await fetch(`/api/leads/${lead.id}`, { method: 'DELETE' })
+    setDeleting(null)
     onRefresh()
   }
 
@@ -59,7 +72,8 @@ export default function LeadsTable({ leads, templates, onEdit, onRefresh }: Prop
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Empresa / Nombre</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Teléfono</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Ciudad</th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">Origen</th>
+            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">Producto</th>
+            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">Responsable</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Últ. contacto</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Próx. contacto</th>
@@ -68,7 +82,7 @@ export default function LeadsTable({ leads, templates, onEdit, onRefresh }: Prop
         </thead>
         <tbody className="divide-y divide-gray-100">
           {leads.map(lead => (
-            <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
+            <tr key={lead.id} className={`hover:bg-gray-50 transition-colors ${deleting === lead.id ? 'opacity-40' : ''}`}>
               <td className="px-4 py-3">
                 <div className="font-medium text-gray-900">{lead.empresa || '—'}</div>
                 <div className="text-gray-500 text-xs">{lead.nombre}</div>
@@ -80,7 +94,18 @@ export default function LeadsTable({ leads, templates, onEdit, onRefresh }: Prop
               </td>
               <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{lead.telefono}</td>
               <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{lead.ciudad_provincia || '—'}</td>
-              <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{lead.origen || '—'}</td>
+              <td className="px-4 py-3 hidden lg:table-cell">
+                {lead.producto_categoria ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-petrol-50 text-petrol-700 border border-petrol-100">
+                    {lead.producto_categoria}
+                  </span>
+                ) : (
+                  <span className="text-gray-400 text-xs">—</span>
+                )}
+              </td>
+              <td className="px-4 py-3 text-gray-600 text-xs hidden lg:table-cell">
+                {lead.responsable || <span className="text-gray-400">—</span>}
+              </td>
               <td className="px-4 py-3">
                 <StatusBadge estado={lead.estado} />
               </td>
@@ -99,7 +124,7 @@ export default function LeadsTable({ leads, templates, onEdit, onRefresh }: Prop
                   <WhatsAppButton lead={lead} template={msg1} />
                   <select
                     value={lead.estado}
-                    disabled={updating === lead.id}
+                    disabled={updating === lead.id || deleting === lead.id}
                     onChange={e => changeEstado(lead, e.target.value as LeadEstado)}
                     className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-petrol-500 disabled:opacity-50"
                   >
@@ -107,9 +132,17 @@ export default function LeadsTable({ leads, templates, onEdit, onRefresh }: Prop
                   </select>
                   <button
                     onClick={() => onEdit(lead)}
-                    className="text-xs text-petrol-600 hover:text-petrol-800 border border-petrol-200 hover:border-petrol-400 rounded-lg px-2.5 py-1.5 transition-colors"
+                    disabled={deleting === lead.id}
+                    className="text-xs text-petrol-600 hover:text-petrol-800 border border-petrol-200 hover:border-petrol-400 rounded-lg px-2.5 py-1.5 transition-colors disabled:opacity-50"
                   >
                     Editar
+                  </button>
+                  <button
+                    onClick={() => deleteLead(lead)}
+                    disabled={deleting === lead.id}
+                    className="text-xs text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-lg px-2.5 py-1.5 transition-colors disabled:opacity-50"
+                  >
+                    {deleting === lead.id ? '...' : 'Borrar'}
                   </button>
                 </div>
               </td>

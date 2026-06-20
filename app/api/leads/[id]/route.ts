@@ -30,11 +30,22 @@ export async function PATCH(
 
   if (fetchError) return NextResponse.json({ error: 'Lead no encontrado' }, { status: 404 })
 
+  // Whitelist de campos actualizables
+  const allowed: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  const FIELDS = [
+    'empresa','nombre','telefono','email','ciudad_provincia',
+    'producto_consultado','producto_categoria','origen','fecha_ingreso',
+    'estado','ultimo_contacto','proximo_contacto','observaciones','responsable',
+  ]
+  for (const f of FIELDS) {
+    if (f in body) allowed[f] = body[f]
+  }
+
   // Si hay cambio de estado, aplicar lógica de flujo automático
-  let update: Record<string, unknown> = { ...body, updated_at: new Date().toISOString() }
+  let update = allowed
   if (body.estado && body.estado !== current.estado) {
     const flowUpdate = buildFlowUpdate(body.estado as LeadEstado)
-    update = { ...update, ...flowUpdate }
+    update = { ...allowed, ...flowUpdate }
   }
 
   const { error: updateError } = await supabaseAdmin
@@ -55,5 +66,28 @@ export async function PATCH(
     })
   }
 
+  return NextResponse.json({ ok: true })
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const denied = requireAuth(req)
+  if (denied) return denied
+
+  const { id } = params
+
+  if (!UUID_RE.test(id)) {
+    return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
+  }
+
+  // lead_history se elimina en cascada (ON DELETE CASCADE en el schema)
+  const { error } = await supabaseAdmin
+    .from('leads')
+    .delete()
+    .eq('id', id)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

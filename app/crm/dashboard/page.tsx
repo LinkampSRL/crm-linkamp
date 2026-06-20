@@ -1,9 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { ESTADOS, ESTADO_COLOR } from '@/lib/estados'
+import { PRODUCTO_CATEGORIAS, RESPONSABLES } from '@/lib/types'
 import type { Lead, LeadEstado } from '@/lib/types'
-
-// ─── helpers ────────────────────────────────────────────────────────────────
 
 function pct(num: number, den: number) {
   if (den === 0) return '—'
@@ -23,9 +22,7 @@ function BarRow({ label, value, max, color }: { label: string; value: number; ma
   )
 }
 
-function StatCard({
-  label, value, sub, color,
-}: { label: string; value: string | number; sub?: string; color?: string }) {
+function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <div className={`rounded-xl border p-4 ${color ?? 'bg-gray-50 border-gray-200'}`}>
       <div className="text-3xl font-bold text-gray-800">{value}</div>
@@ -34,8 +31,6 @@ function StatCard({
     </div>
   )
 }
-
-// ─── page ───────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -52,31 +47,31 @@ export default function DashboardPage() {
     return <div className="text-center py-20 text-gray-400">Cargando dashboard...</div>
   }
 
-  const hoy        = new Date().toISOString()
-  const total      = leads.length
-  const ganados    = leads.filter(l => l.estado === 'Ganado').length
-  const perdidos   = leads.filter(l => l.estado === 'Perdido' || l.estado === 'No interesado').length
-  const cerrados   = ganados + perdidos
+  const hoy      = new Date().toISOString()
+  const total    = leads.length
+  const ganados  = leads.filter(l => l.estado === 'Ganado').length
+  const perdidos = leads.filter(l => l.estado === 'Perdido' || l.estado === 'No interesado').length
+  const cerrados = ganados + perdidos
 
   const contactarHoy = leads.filter(l =>
     l.estado === 'Pendiente de contacto' ||
     (l.proximo_contacto && l.proximo_contacto <= hoy && !['Ganado','Perdido','No interesado'].includes(l.estado))
   ).length
 
-  const pendientes     = leads.filter(l => l.estado === 'Pendiente de contacto').length
-  const msg1           = leads.filter(l => l.estado === 'Mensaje 1 enviado').length
-  const respondieron   = leads.filter(l => l.estado === 'Respondió - cotizar').length
-  const cotEnviadas    = leads.filter(l => l.estado === 'Cotización enviada').length
-  const cotActivas     = leads.filter(l => l.estado === 'Cotización enviada' || l.estado === 'Seguimiento cotización').length
+  const pendientes   = leads.filter(l => l.estado === 'Pendiente de contacto').length
+  const msg1         = leads.filter(l => l.estado === 'Mensaje 1 enviado').length
+  const respondieron = leads.filter(l => l.estado === 'Respondió - cotizar').length
+  const cotEnviadas  = leads.filter(l => l.estado === 'Cotización enviada').length
+  const cotActivas   = leads.filter(l => l.estado === 'Cotización enviada' || l.estado === 'Seguimiento cotización').length
 
-  // Leads por estado
+  // Por estado
   const porEstado = ESTADOS.map(e => ({
     estado: e,
     count:  leads.filter(l => l.estado === e).length,
   })).filter(e => e.count > 0)
   const maxEstado = Math.max(...porEstado.map(e => e.count), 1)
 
-  // Leads por origen
+  // Por origen
   const origenMap = leads.reduce<Record<string, number>>((acc, l) => {
     const k = l.origen || 'Sin origen'
     acc[k] = (acc[k] || 0) + 1
@@ -85,7 +80,24 @@ export default function DashboardPage() {
   const porOrigen = Object.entries(origenMap).sort((a, b) => b[1] - a[1])
   const maxOrigen = Math.max(...porOrigen.map(o => o[1]), 1)
 
-  // Color de barra por estado
+  // Por producto_categoria
+  const porProducto: { label: string; count: number }[] = PRODUCTO_CATEGORIAS.map(p => ({
+    label: p,
+    count: leads.filter(l => l.producto_categoria === p).length,
+  })).filter(p => p.count > 0)
+  const sinProducto = leads.filter(l => !l.producto_categoria).length
+  if (sinProducto > 0) porProducto.push({ label: 'Sin categoría', count: sinProducto })
+  const maxProducto = Math.max(...porProducto.map(p => p.count), 1)
+
+  // Por responsable
+  const porResponsable: { label: string; count: number }[] = RESPONSABLES.map(r => ({
+    label: r,
+    count: leads.filter(l => l.responsable === r).length,
+  })).filter(r => r.count > 0)
+  const sinResponsable = leads.filter(l => !l.responsable).length
+  if (sinResponsable > 0) porResponsable.push({ label: 'Sin asignar', count: sinResponsable })
+  const maxResponsable = Math.max(...porResponsable.map(r => r.count), 1)
+
   const estadoBarColor: Record<LeadEstado, string> = {
     'Pendiente de contacto':  'bg-gray-400',
     'Mensaje 1 enviado':      'bg-yellow-400',
@@ -106,16 +118,16 @@ export default function DashboardPage() {
       <section>
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Resumen general</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          <StatCard label="Total de leads"          value={total}        color="bg-gray-50 border-gray-200" />
-          <StatCard label="Contactar hoy"           value={contactarHoy} color="bg-orange-50 border-orange-300" />
-          <StatCard label="Pendientes de contacto"  value={pendientes}   color="bg-gray-50 border-gray-200" />
-          <StatCard label="Mensaje 1 enviado"       value={msg1}         color="bg-yellow-50 border-yellow-300" />
-          <StatCard label="Respondieron / cotizar"  value={respondieron} color="bg-green-50 border-green-300" />
-          <StatCard label="Cotizaciones enviadas"   value={cotEnviadas}  color="bg-yellow-50 border-yellow-300" />
-          <StatCard label="Cotizaciones activas"    value={cotActivas}   color="bg-yellow-50 border-yellow-400"
+          <StatCard label="Total de leads"            value={total}        color="bg-gray-50 border-gray-200" />
+          <StatCard label="Contactar hoy"             value={contactarHoy} color="bg-orange-50 border-orange-300" />
+          <StatCard label="Pendientes de contacto"    value={pendientes}   color="bg-gray-50 border-gray-200" />
+          <StatCard label="Mensaje 1 enviado"         value={msg1}         color="bg-yellow-50 border-yellow-300" />
+          <StatCard label="Respondieron / cotizar"    value={respondieron} color="bg-green-50 border-green-300" />
+          <StatCard label="Cotizaciones enviadas"     value={cotEnviadas}  color="bg-yellow-50 border-yellow-300" />
+          <StatCard label="Cotizaciones activas"      value={cotActivas}   color="bg-yellow-50 border-yellow-400"
             sub="Enviadas + en seguimiento" />
-          <StatCard label="Ganados"                 value={ganados}      color="bg-green-50 border-green-400" />
-          <StatCard label="Perdidos / No interesados" value={perdidos}   color="bg-red-50 border-red-200" />
+          <StatCard label="Ganados"                   value={ganados}      color="bg-green-50 border-green-400" />
+          <StatCard label="Perdidos / No interesados" value={perdidos}     color="bg-red-50 border-red-200" />
           <StatCard
             label="Conversión total"
             value={pct(ganados, total)}
@@ -130,6 +142,30 @@ export default function DashboardPage() {
           />
         </div>
       </section>
+
+      {/* ── Leads por producto_categoria ── */}
+      {porProducto.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Leads por producto</h2>
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            {porProducto.map(({ label, count }) => (
+              <BarRow key={label} label={label} value={count} max={maxProducto} color="bg-petrol-600" />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Leads por responsable ── */}
+      {porResponsable.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Leads por responsable</h2>
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            {porResponsable.map(({ label, count }) => (
+              <BarRow key={label} label={label} value={count} max={maxResponsable} color="bg-brand-orange" />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Leads por estado ── */}
       <section>
@@ -157,13 +193,7 @@ export default function DashboardPage() {
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Leads por origen</h2>
           <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
             {porOrigen.map(([origen, count]) => (
-              <BarRow
-                key={origen}
-                label={origen}
-                value={count}
-                max={maxOrigen}
-                color="bg-petrol-500"
-              />
+              <BarRow key={origen} label={origen} value={count} max={maxOrigen} color="bg-petrol-500" />
             ))}
           </div>
         </section>

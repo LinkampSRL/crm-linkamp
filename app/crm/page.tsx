@@ -1,21 +1,24 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { ESTADOS } from '@/lib/estados'
+import { PRODUCTO_CATEGORIAS, RESPONSABLES } from '@/lib/types'
 import MetricCards from '@/components/MetricCards'
 import LeadsTable from '@/components/LeadsTable'
 import LeadModal from '@/components/LeadModal'
 import ImportModal from '@/components/ImportModal'
 import type { Lead, Template } from '@/lib/types'
 
-const FILTROS = [
-  { label: 'Todos', value: 'todos' },
+const FILTROS_ESTADO = [
+  { label: 'Todos los estados', value: 'todos' },
   ...ESTADOS.map(e => ({ label: e, value: e })),
 ]
 
 export default function LeadsPage() {
   const [leads, setLeads]           = useState<Lead[]>([])
   const [templates, setTemplates]   = useState<Template[]>([])
-  const [filtro, setFiltro]         = useState('todos')
+  const [filtroEstado, setFiltroEstado]       = useState('todos')
+  const [filtroProducto, setFiltroProducto]   = useState('')
+  const [filtroResponsable, setFiltroResponsable] = useState('')
   const [search, setSearch]         = useState('')
   const [showNew, setShowNew]       = useState(false)
   const [editLead, setEditLead]     = useState<Lead | null>(null)
@@ -41,14 +44,16 @@ export default function LeadsPage() {
   }, [fetchLeads, fetchTemplates])
 
   const filtered = leads.filter(l => {
-    const matchFiltro = filtro === 'todos' || l.estado === filtro
+    const matchEstado      = filtroEstado === 'todos' || l.estado === filtroEstado
+    const matchProducto    = !filtroProducto || l.producto_categoria === filtroProducto
+    const matchResponsable = !filtroResponsable || l.responsable === filtroResponsable
     const q = search.toLowerCase()
     const matchSearch = !q ||
       (l.empresa || '').toLowerCase().includes(q) ||
       l.nombre.toLowerCase().includes(q) ||
       l.telefono.includes(q) ||
       (l.ciudad_provincia || '').toLowerCase().includes(q)
-    return matchFiltro && matchSearch
+    return matchEstado && matchProducto && matchResponsable && matchSearch
   })
 
   return (
@@ -73,21 +78,41 @@ export default function LeadsPage() {
 
       <MetricCards leads={leads} hoy={hoy} />
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <input
           type="text"
           placeholder="Buscar por empresa, nombre, teléfono o ciudad..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-petrol-500"
+          className="lg:col-span-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-petrol-500"
         />
         <select
-          value={filtro}
-          onChange={e => setFiltro(e.target.value)}
+          value={filtroEstado}
+          onChange={e => setFiltroEstado(e.target.value)}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-petrol-500"
         >
-          {FILTROS.map(f => (
+          {FILTROS_ESTADO.map(f => (
             <option key={f.value} value={f.value}>{f.label}</option>
+          ))}
+        </select>
+        <select
+          value={filtroProducto}
+          onChange={e => setFiltroProducto(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-petrol-500"
+        >
+          <option value="">Todos los productos</option>
+          {PRODUCTO_CATEGORIAS.map(p => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
+        <select
+          value={filtroResponsable}
+          onChange={e => setFiltroResponsable(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-petrol-500"
+        >
+          <option value="">Todos los responsables</option>
+          {RESPONSABLES.map(r => (
+            <option key={r} value={r}>{r}</option>
           ))}
         </select>
       </div>

@@ -9,6 +9,13 @@ export type LeadEstado =
   | 'Perdido'
   | 'No interesado'
 
+export type ProductoCategoria = 'PWS' | 'LPS' | 'BBC' | 'MCS' | 'Otros'
+
+export const PRODUCTO_CATEGORIAS: ProductoCategoria[] = ['PWS', 'LPS', 'BBC', 'MCS', 'Otros']
+
+export const RESPONSABLES = ['Sol', 'Martín', 'Cristian', 'Andrés', 'Thomas'] as const
+export type Responsable = typeof RESPONSABLES[number]
+
 export type LeadOrigen =
   | 'Meta'
   | 'Web'
@@ -29,6 +36,7 @@ export interface Lead {
   email: string | null
   ciudad_provincia: string | null
   producto_consultado: string | null
+  producto_categoria: ProductoCategoria | null
   origen: LeadOrigen | null
   fecha_ingreso: string
   estado: LeadEstado
