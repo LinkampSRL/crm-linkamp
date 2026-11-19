@@ -59,7 +59,6 @@ export default function DashboardPage() {
   ).length
 
   const pendientes   = leads.filter(l => l.estado === 'Pendiente de contacto').length
-  const msg1         = leads.filter(l => l.estado === 'Mensaje 1 enviado').length
   const respondieron = leads.filter(l => l.estado === 'Respondió - cotizar').length
   const cotEnviadas  = leads.filter(l => l.estado === 'Cotización enviada').length
   const cotActivas   = leads.filter(l => l.estado === 'Cotización enviada' || l.estado === 'Seguimiento cotización').length
@@ -100,7 +99,6 @@ export default function DashboardPage() {
 
   const estadoBarColor: Record<LeadEstado, string> = {
     'Pendiente de contacto':  'bg-gray-400',
-    'Mensaje 1 enviado':      'bg-yellow-400',
     'Recontactar en 48 hs':   'bg-yellow-500',
     'Respondió - cotizar':    'bg-green-400',
     'Cotización enviada':     'bg-yellow-500',
@@ -121,7 +119,6 @@ export default function DashboardPage() {
           <StatCard label="Total de leads"            value={total}        color="bg-gray-50 border-gray-200" />
           <StatCard label="Contactar hoy"             value={contactarHoy} color="bg-orange-50 border-orange-300" />
           <StatCard label="Pendientes de contacto"    value={pendientes}   color="bg-gray-50 border-gray-200" />
-          <StatCard label="Mensaje 1 enviado"         value={msg1}         color="bg-yellow-50 border-yellow-300" />
           <StatCard label="Respondieron / cotizar"    value={respondieron} color="bg-green-50 border-green-300" />
           <StatCard label="Cotizaciones enviadas"     value={cotEnviadas}  color="bg-yellow-50 border-yellow-300" />
           <StatCard label="Cotizaciones activas"      value={cotActivas}   color="bg-yellow-50 border-yellow-400"

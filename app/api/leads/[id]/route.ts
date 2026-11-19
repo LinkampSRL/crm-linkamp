@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-server'
 import { requireAuth } from '@/lib/api-auth'
-import { buildFlowUpdate } from '@/lib/flow'
+import { buildFlowUpdate, calcProximoContacto } from '@/lib/flow'
 import type { LeadEstado } from '@/lib/types'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -21,10 +21,10 @@ export async function PATCH(
 
   const body = await req.json()
 
-  // Obtener estado actual para detectar cambio (sin confiar en el cliente)
+  // Obtener estado actual y flag de fecha manual
   const { data: current, error: fetchError } = await supabaseAdmin
     .from('leads')
-    .select('estado')
+    .select('estado, proximo_contacto_manual')
     .eq('id', id)
     .single()
 
@@ -35,17 +35,34 @@ export async function PATCH(
   const FIELDS = [
     'empresa','nombre','telefono','email','ciudad_provincia',
     'producto_consultado','producto_categoria','origen','fecha_ingreso',
-    'estado','ultimo_contacto','proximo_contacto','observaciones','responsable',
+    'estado','ultimo_contacto','proximo_contacto','proximo_contacto_manual',
+    'observaciones','responsable',
   ]
   for (const f of FIELDS) {
     if (f in body) allowed[f] = body[f]
   }
 
-  // Si hay cambio de estado, aplicar lógica de flujo automático
+  // Si hay cambio de estado, aplicar lógica de flujo automático.
+  // Si el lead tiene fecha manual activa, preservar proximo_contacto existente.
   let update = allowed
+  const estadoFinal = (body.estado as LeadEstado | undefined) ?? current.estado
   if (body.estado && body.estado !== current.estado) {
     const flowUpdate = buildFlowUpdate(body.estado as LeadEstado)
-    update = { ...allowed, ...flowUpdate }
+    const hasManualDate = current.proximo_contacto_manual === true
+    if (hasManualDate) {
+      // Aplicar flow pero sin sobreescribir proximo_contacto
+      const { proximo_contacto: _skip, ...flowWithoutDate } = flowUpdate
+      update = { ...allowed, ...flowWithoutDate }
+    } else {
+      update = { ...allowed, ...flowUpdate }
+    }
+  } else if (body.proximo_contacto_manual === false && current.proximo_contacto_manual === true) {
+    // El usuario borró la fecha manual: recalcular proximo_contacto según estado actual
+    update = {
+      ...allowed,
+      proximo_contacto:        calcProximoContacto(estadoFinal),
+      proximo_contacto_manual: false,
+    }
   }
 
   const { error: updateError } = await supabaseAdmin

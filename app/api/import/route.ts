@@ -75,9 +75,10 @@ export async function POST(req: NextRequest) {
       producto_categoria:  normalizeProductoCategoria(productoCategoriaRaw),
       origen:              origenRaw ? normalizeOrigen(origenRaw) : null,
       fecha_ingreso:       str(row.fecha_ingreso ?? row.FechaIngreso ?? '') || new Date().toISOString().split('T')[0],
-      estado:              'Pendiente de contacto',
-      observaciones:       str(row.observaciones ?? row.Observaciones ?? '') || null,
-      responsable:         normalizeResponsable(responsableRaw),
+      estado:                   'Pendiente de contacto',
+      proximo_contacto_manual:  false,
+      observaciones:            str(row.observaciones ?? row.Observaciones ?? '') || null,
+      responsable:              normalizeResponsable(responsableRaw),
     })
   })
 

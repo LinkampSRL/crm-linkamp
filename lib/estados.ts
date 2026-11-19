@@ -2,7 +2,6 @@ import type { LeadEstado } from './types'
 
 export const ESTADOS: LeadEstado[] = [
   'Pendiente de contacto',
-  'Mensaje 1 enviado',
   'Recontactar en 48 hs',
   'Respondió - cotizar',
   'Cotización enviada',
@@ -14,7 +13,6 @@ export const ESTADOS: LeadEstado[] = [
 
 export const ESTADO_COLOR: Record<LeadEstado, string> = {
   'Pendiente de contacto':  'bg-gray-100 text-gray-700',
-  'Mensaje 1 enviado':      'bg-yellow-100 text-yellow-800',
   'Recontactar en 48 hs':   'bg-yellow-100 text-yellow-800',
   'Respondió - cotizar':    'bg-green-100 text-green-800',
   'Cotización enviada':     'bg-yellow-100 text-yellow-800',
@@ -26,7 +24,6 @@ export const ESTADO_COLOR: Record<LeadEstado, string> = {
 
 export const ESTADO_DOT: Record<LeadEstado, string> = {
   'Pendiente de contacto':  'bg-gray-400',
-  'Mensaje 1 enviado':      'bg-yellow-400',
   'Recontactar en 48 hs':   'bg-yellow-400',
   'Respondió - cotizar':    'bg-green-500',
   'Cotización enviada':     'bg-yellow-500',

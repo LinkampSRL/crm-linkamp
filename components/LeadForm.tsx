@@ -10,6 +10,23 @@ const ORIGENES: LeadOrigen[] = [
   'Google Ads', 'Mercado Libre', 'Base histórica', 'Base de datos inicial', 'Otro',
 ]
 
+// Convierte un TIMESTAMPTZ ISO a "YYYY-MM-DD" en zona Argentina (UTC-3)
+function isoToARTDate(iso: string | null): string {
+  if (!iso) return ''
+  try {
+    const d = new Date(iso)
+    const art = new Date(d.getTime() - 3 * 60 * 60 * 1000)
+    return art.toISOString().split('T')[0]
+  } catch { return '' }
+}
+
+// Convierte "YYYY-MM-DD" a ISO a las 09:00 ART (= 12:00 UTC)
+function artDateToISO(dateStr: string): string | null {
+  if (!dateStr) return null
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0)).toISOString()
+}
+
 interface Props {
   lead?: Lead
   onSaved: () => void
@@ -28,22 +45,26 @@ type FormData = {
   observaciones: string
   responsable: string
   estado: LeadEstado
+  proximo_contacto_fecha: string  // "YYYY-MM-DD" o ''
 }
 
 export default function LeadForm({ lead, onSaved, onCancel }: Props) {
   const isEdit = !!lead
   const [form, setForm] = useState<FormData>({
-    empresa:             lead?.empresa || '',
-    nombre:              lead?.nombre || '',
-    telefono:            lead?.telefono || '',
-    email:               lead?.email || '',
-    ciudad_provincia:    lead?.ciudad_provincia || '',
-    producto_consultado: lead?.producto_consultado || '',
-    producto_categoria:  lead?.producto_categoria || '',
-    origen:              lead?.origen || '',
-    observaciones:       lead?.observaciones || '',
-    responsable:         lead?.responsable || '',
-    estado:              lead?.estado || 'Pendiente de contacto',
+    empresa:                lead?.empresa || '',
+    nombre:                 lead?.nombre || '',
+    telefono:               lead?.telefono || '',
+    email:                  lead?.email || '',
+    ciudad_provincia:       lead?.ciudad_provincia || '',
+    producto_consultado:    lead?.producto_consultado || '',
+    producto_categoria:     lead?.producto_categoria || '',
+    origen:                 lead?.origen || '',
+    observaciones:          lead?.observaciones || '',
+    responsable:            lead?.responsable || '',
+    estado:                 lead?.estado || 'Pendiente de contacto',
+    proximo_contacto_fecha: lead?.proximo_contacto_manual
+      ? isoToARTDate(lead.proximo_contacto)
+      : '',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
@@ -61,7 +82,9 @@ export default function LeadForm({ lead, onSaved, onCancel }: Props) {
     setSaving(true)
     setError('')
 
-    const payload = {
+    const manualDate = artDateToISO(form.proximo_contacto_fecha)
+
+    const payload: Record<string, unknown> = {
       empresa:             form.empresa.trim() || null,
       nombre:              form.nombre.trim(),
       telefono:            form.telefono.trim(),
@@ -73,6 +96,18 @@ export default function LeadForm({ lead, onSaved, onCancel }: Props) {
       observaciones:       form.observaciones.trim() || null,
       responsable:         form.responsable || null,
       estado:              form.estado,
+    }
+
+    // Solo incluir campos de fecha manual si el usuario los tocó
+    if (isEdit) {
+      if (manualDate) {
+        payload.proximo_contacto        = manualDate
+        payload.proximo_contacto_manual = true
+      } else if (form.proximo_contacto_fecha === '' && lead?.proximo_contacto_manual) {
+        // El usuario borró la fecha manual → limpiar
+        payload.proximo_contacto        = null
+        payload.proximo_contacto_manual = false
+      }
     }
 
     const res = isEdit
@@ -153,6 +188,25 @@ export default function LeadForm({ lead, onSaved, onCancel }: Props) {
             <select className={input} value={form.estado} onChange={e => set('estado', e.target.value as LeadEstado)}>
               {ESTADOS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
+          </div>
+        )}
+        {isEdit && (
+          <div>
+            <label className={label}>
+              Próximo contacto manual
+              {lead?.proximo_contacto_manual && (
+                <span className="ml-2 text-xs text-petrol-600 font-normal">● activo</span>
+              )}
+            </label>
+            <input
+              type="date"
+              className={input}
+              value={form.proximo_contacto_fecha}
+              onChange={e => set('proximo_contacto_fecha', e.target.value)}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Si se configura, tiene prioridad sobre el cálculo automático. Dejá vacío para usar la fecha automática.
+            </p>
           </div>
         )}
       </div>

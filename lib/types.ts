@@ -1,6 +1,5 @@
 export type LeadEstado =
   | 'Pendiente de contacto'
-  | 'Mensaje 1 enviado'
   | 'Recontactar en 48 hs'
   | 'Respondió - cotizar'
   | 'Cotización enviada'
@@ -9,9 +8,9 @@ export type LeadEstado =
   | 'Perdido'
   | 'No interesado'
 
-export type ProductoCategoria = 'PWS' | 'LPS' | 'BBC' | 'MCS' | 'Otros'
+export type ProductoCategoria = 'PWS' | 'LPS' | 'BBC' | 'MCS' | 'BPL' | 'Otros'
 
-export const PRODUCTO_CATEGORIAS: ProductoCategoria[] = ['PWS', 'LPS', 'BBC', 'MCS', 'Otros']
+export const PRODUCTO_CATEGORIAS: ProductoCategoria[] = ['PWS', 'LPS', 'BBC', 'MCS', 'BPL', 'Otros']
 
 export const RESPONSABLES = ['Sol', 'Martín', 'Cristian', 'Andrés', 'Thomas'] as const
 export type Responsable = typeof RESPONSABLES[number]
@@ -42,6 +41,7 @@ export interface Lead {
   estado: LeadEstado
   ultimo_contacto: string | null
   proximo_contacto: string | null
+  proximo_contacto_manual: boolean
   observaciones: string | null
   responsable: string | null
   created_at: string

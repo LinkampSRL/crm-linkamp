@@ -84,11 +84,14 @@ export default function ContactarHoyPage() {
   const handleFiltroProducto = (val: string) => { setFiltroProducto(val); setCurrentIndex(0) }
   const handleFiltroResponsable = (val: string) => { setFiltroResponsable(val); setCurrentIndex(0) }
 
-  const msg1 = templates.find(t => t.id === 'mensaje_1') || null
-  const msg2 = templates.find(t => t.id === 'mensaje_2') || null
+  const msg1           = templates.find(t => t.id === 'mensaje_1') || null
+  const msg2           = templates.find(t => t.id === 'mensaje_2') || null
+  const msgSeguimiento = templates.find(t => t.id === 'seguimiento_cotizacion') || null
 
   function templateForLead(lead: Lead): Template | null {
-    return lead.estado === 'Recontactar en 48 hs' ? msg2 : msg1
+    if (lead.estado === 'Recontactar en 48 hs') return msg2
+    if (lead.estado === 'Cotización enviada' || lead.estado === 'Seguimiento cotización') return msgSeguimiento
+    return msg1
   }
 
   async function changeEstado(lead: Lead, newEstado: LeadEstado) {

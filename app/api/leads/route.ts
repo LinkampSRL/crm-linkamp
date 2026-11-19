@@ -35,8 +35,9 @@ export async function POST(req: NextRequest) {
     fecha_ingreso:       body.fecha_ingreso        || new Date().toISOString().split('T')[0],
     estado:              body.estado               || 'Pendiente de contacto',
     ultimo_contacto:     body.ultimo_contacto      ?? null,
-    proximo_contacto:    body.proximo_contacto     ?? null,
-    observaciones:       body.observaciones        ?? null,
+    proximo_contacto:         body.proximo_contacto         ?? null,
+    proximo_contacto_manual:  body.proximo_contacto_manual  ?? false,
+    observaciones:            body.observaciones            ?? null,
     responsable:         body.responsable          ?? null,
   }
 

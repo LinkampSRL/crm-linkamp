@@ -4,8 +4,9 @@ import { DEFAULT_TEMPLATES, applyTemplate } from '@/lib/templates'
 import type { Template } from '@/lib/types'
 
 const TEMPLATE_LABELS: Record<string, string> = {
-  mensaje_1: 'Mensaje 1 — Primer contacto',
-  mensaje_2: 'Mensaje 2 — Recontacto (48 hs)',
+  mensaje_1:               'Mensaje 1 — Primer contacto',
+  mensaje_2:               'Mensaje 2 — Recontacto',
+  seguimiento_cotizacion:  'Seguimiento de cotización',
 }
 
 const PREVIEW_VARS = {
@@ -17,8 +18,9 @@ const PREVIEW_VARS = {
 
 export default function PlantillasPage() {
   const [templates, setTemplates] = useState<Record<string, string>>({
-    mensaje_1: DEFAULT_TEMPLATES.mensaje_1,
-    mensaje_2: DEFAULT_TEMPLATES.mensaje_2,
+    mensaje_1:              DEFAULT_TEMPLATES.mensaje_1,
+    mensaje_2:              DEFAULT_TEMPLATES.mensaje_2,
+    seguimiento_cotizacion: DEFAULT_TEMPLATES.seguimiento_cotizacion,
   })
   const [saving, setSaving] = useState<string | null>(null)
   const [saved,  setSaved]  = useState<string | null>(null)

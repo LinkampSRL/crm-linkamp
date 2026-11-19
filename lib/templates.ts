@@ -14,6 +14,14 @@ Te consulto nuevamente por la balanza portátil para pesaje por ejes.
 Durante junio y julio tenemos condiciones especiales: precio promocional y financiación hasta 36 meses con BNA PyME / BNA Agro.
 
 ¿Te interesa que te enviemos la cotización actualizada?`,
+
+  seguimiento_cotizacion: `Hola [Nombre], ¿cómo estás?
+
+Te escribo para hacer seguimiento de la cotización que te enviamos para [Producto].
+
+¿Pudiste revisarla? ¿Tenés alguna consulta sobre la propuesta o las condiciones de financiación?
+
+Quedamos a disposición.`,
 }
 
 export function applyTemplate(
