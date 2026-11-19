@@ -4,8 +4,9 @@ import StatusBadge from '@/components/StatusBadge'
 import WhatsAppButton from '@/components/WhatsAppButton'
 import LeadModal from '@/components/LeadModal'
 import { ESTADOS } from '@/lib/estados'
-import { PRODUCTO_CATEGORIAS, RESPONSABLES } from '@/lib/types'
+import { MARCAS, PRODUCTO_CATEGORIAS, RESPONSABLES } from '@/lib/types'
 import type { Lead, LeadEstado, Template } from '@/lib/types'
+import { templateIdForLead } from '@/lib/templates'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -40,6 +41,7 @@ export default function ContactarHoyPage() {
   const [loading, setLoading]           = useState(true)
   const [updating, setUpdating]         = useState<string | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [filtroMarca, setFiltroMarca]             = useState('')
   const [filtroProducto, setFiltroProducto]       = useState('')
   const [filtroResponsable, setFiltroResponsable] = useState('')
 
@@ -73,25 +75,22 @@ export default function ContactarHoyPage() {
     return l.proximo_contacto ? l.proximo_contacto <= hoy : false
   })
 
-  // Aplicar filtros de producto y responsable
+  // Aplicar filtros de marca, producto y responsable
   const contactarHoy = contactarHoyBase.filter(l => {
+    const matchMarca       = !filtroMarca || l.marca_comercial === filtroMarca
     const matchProducto    = !filtroProducto || (filtroProducto === '__sin__' ? !l.producto_categoria : l.producto_categoria === filtroProducto)
     const matchResponsable = !filtroResponsable || (filtroResponsable === '__sin__' ? !l.responsable : l.responsable === filtroResponsable)
-    return matchProducto && matchResponsable
+    return matchMarca && matchProducto && matchResponsable
   })
 
   // Resetear índice cuando cambian los filtros
-  const handleFiltroProducto = (val: string) => { setFiltroProducto(val); setCurrentIndex(0) }
+  const handleFiltroMarca       = (val: string) => { setFiltroMarca(val);       setCurrentIndex(0) }
+  const handleFiltroProducto    = (val: string) => { setFiltroProducto(val);    setCurrentIndex(0) }
   const handleFiltroResponsable = (val: string) => { setFiltroResponsable(val); setCurrentIndex(0) }
 
-  const msg1           = templates.find(t => t.id === 'mensaje_1') || null
-  const msg2           = templates.find(t => t.id === 'mensaje_2') || null
-  const msgSeguimiento = templates.find(t => t.id === 'seguimiento_cotizacion') || null
-
   function templateForLead(lead: Lead): Template | null {
-    if (lead.estado === 'Recontactar en 48 hs') return msg2
-    if (lead.estado === 'Cotización enviada' || lead.estado === 'Seguimiento cotización') return msgSeguimiento
-    return msg1
+    const id = templateIdForLead(lead.marca_comercial ?? 'Linkamp', lead.estado)
+    return templates.find(t => t.id === id) || null
   }
 
   async function changeEstado(lead: Lead, newEstado: LeadEstado) {
@@ -143,7 +142,15 @@ export default function ContactarHoyPage() {
       </div>
 
       {/* ── Filtros ── */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row gap-3 mb-6 flex-wrap">
+        <select
+          value={filtroMarca}
+          onChange={e => handleFiltroMarca(e.target.value)}
+          className={selectCls}
+        >
+          <option value="">Todas las marcas</option>
+          {MARCAS.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
         <select
           value={filtroProducto}
           onChange={e => handleFiltroProducto(e.target.value)}
@@ -171,7 +178,7 @@ export default function ContactarHoyPage() {
           <div className="text-5xl mb-3">🎉</div>
           <p className="text-xl font-semibold text-gray-700">¡Todo al día!</p>
           <p className="text-gray-500 mt-1">
-            {filtroProducto || filtroResponsable
+            {filtroMarca || filtroProducto || filtroResponsable
               ? 'No hay leads para contactar con los filtros seleccionados.'
               : 'No tenés leads para contactar hoy.'}
           </p>

@@ -1,8 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { ESTADOS, ESTADO_COLOR } from '@/lib/estados'
-import { PRODUCTO_CATEGORIAS, RESPONSABLES } from '@/lib/types'
-import type { Lead, LeadEstado } from '@/lib/types'
+import { MARCAS, PRODUCTO_CATEGORIAS_LINKAMP, PRODUCTO_CATEGORIAS_PAMPERA, RESPONSABLES } from '@/lib/types'
+import type { Lead, LeadEstado, MarcaComercial } from '@/lib/types'
 
 function pct(num: number, den: number) {
   if (den === 0) return '—'
@@ -79,14 +79,32 @@ export default function DashboardPage() {
   const porOrigen = Object.entries(origenMap).sort((a, b) => b[1] - a[1])
   const maxOrigen = Math.max(...porOrigen.map(o => o[1]), 1)
 
-  // Por producto_categoria
-  const porProducto: { label: string; count: number }[] = PRODUCTO_CATEGORIAS.map(p => ({
+  // Por marca
+  const porMarca: { label: string; count: number }[] = MARCAS.map(m => ({
+    label: m,
+    count: leads.filter(l => (l.marca_comercial ?? 'Linkamp') === m).length,
+  })).filter(m => m.count > 0)
+  const maxMarca = Math.max(...porMarca.map(m => m.count), 1)
+
+  // Por producto_categoria (Linkamp)
+  const leadsLinkamp = leads.filter(l => (l.marca_comercial ?? 'Linkamp') === 'Linkamp')
+  const porProductoLinkamp: { label: string; count: number }[] = PRODUCTO_CATEGORIAS_LINKAMP.map(p => ({
     label: p,
-    count: leads.filter(l => l.producto_categoria === p).length,
+    count: leadsLinkamp.filter(l => l.producto_categoria === p).length,
   })).filter(p => p.count > 0)
-  const sinProducto = leads.filter(l => !l.producto_categoria).length
-  if (sinProducto > 0) porProducto.push({ label: 'Sin categoría', count: sinProducto })
-  const maxProducto = Math.max(...porProducto.map(p => p.count), 1)
+  const sinProductoLinkamp = leadsLinkamp.filter(l => !l.producto_categoria).length
+  if (sinProductoLinkamp > 0) porProductoLinkamp.push({ label: 'Sin categoría', count: sinProductoLinkamp })
+  const maxProductoLinkamp = Math.max(...porProductoLinkamp.map(p => p.count), 1)
+
+  // Por producto_categoria (Pampera)
+  const leadsPampera = leads.filter(l => l.marca_comercial === 'Pampera')
+  const porProductoPampera: { label: string; count: number }[] = PRODUCTO_CATEGORIAS_PAMPERA.map(p => ({
+    label: p,
+    count: leadsPampera.filter(l => l.producto_categoria === p).length,
+  })).filter(p => p.count > 0)
+  const sinProductoPampera = leadsPampera.filter(l => !l.producto_categoria).length
+  if (sinProductoPampera > 0) porProductoPampera.push({ label: 'Sin categoría', count: sinProductoPampera })
+  const maxProductoPampera = Math.max(...porProductoPampera.map(p => p.count), 1)
 
   // Por responsable
   const porResponsable: { label: string; count: number }[] = RESPONSABLES.map(r => ({
@@ -140,13 +158,38 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* ── Leads por producto_categoria ── */}
-      {porProducto.length > 0 && (
+      {/* ── Leads por marca ── */}
+      {porMarca.length > 0 && (
         <section>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Leads por producto</h2>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Leads por marca comercial</h2>
           <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-            {porProducto.map(({ label, count }) => (
-              <BarRow key={label} label={label} value={count} max={maxProducto} color="bg-petrol-600" />
+            {porMarca.map(({ label, count }) => (
+              <BarRow key={label} label={label} value={count} max={maxMarca}
+                color={label === 'Pampera' ? 'bg-orange-500' : 'bg-petrol-600'} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Leads por producto — Linkamp ── */}
+      {porProductoLinkamp.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Productos Linkamp</h2>
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            {porProductoLinkamp.map(({ label, count }) => (
+              <BarRow key={label} label={label} value={count} max={maxProductoLinkamp} color="bg-petrol-600" />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Leads por producto — Pampera ── */}
+      {porProductoPampera.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Productos Pampera</h2>
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            {porProductoPampera.map(({ label, count }) => (
+              <BarRow key={label} label={label} value={count} max={maxProductoPampera} color="bg-orange-500" />
             ))}
           </div>
         </section>

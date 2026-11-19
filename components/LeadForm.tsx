@@ -2,15 +2,14 @@
 import { useState } from 'react'
 import { ESTADOS } from '@/lib/estados'
 import LeadHistoryPanel from './LeadHistory'
-import type { Lead, LeadEstado, LeadOrigen, ProductoCategoria } from '@/lib/types'
-import { PRODUCTO_CATEGORIAS, RESPONSABLES } from '@/lib/types'
+import type { Lead, LeadEstado, LeadOrigen, MarcaComercial, ProductoCategoria } from '@/lib/types'
+import { MARCAS, RESPONSABLES, categoriasParaMarca, isCategoriaCompatible } from '@/lib/types'
 
 const ORIGENES: LeadOrigen[] = [
   'Meta', 'Web', 'WhatsApp', 'Referido', 'Agrofy',
-  'Google Ads', 'Mercado Libre', 'Base histórica', 'Base de datos inicial', 'Otro',
+  'Google Ads', 'Mercado Libre', 'Base histórica', 'Base de datos inicial', 'Base de datos BBC', 'Otro',
 ]
 
-// Convierte un TIMESTAMPTZ ISO a "YYYY-MM-DD" en zona Argentina (UTC-3)
 function isoToARTDate(iso: string | null): string {
   if (!iso) return ''
   try {
@@ -20,7 +19,6 @@ function isoToARTDate(iso: string | null): string {
   } catch { return '' }
 }
 
-// Convierte "YYYY-MM-DD" a ISO a las 09:00 ART (= 12:00 UTC)
 function artDateToISO(dateStr: string): string | null {
   if (!dateStr) return null
   const [y, m, d] = dateStr.split('-').map(Number)
@@ -34,6 +32,7 @@ interface Props {
 }
 
 type FormData = {
+  marca_comercial: MarcaComercial
   empresa: string
   nombre: string
   telefono: string
@@ -45,12 +44,13 @@ type FormData = {
   observaciones: string
   responsable: string
   estado: LeadEstado
-  proximo_contacto_fecha: string  // "YYYY-MM-DD" o ''
+  proximo_contacto_fecha: string
 }
 
 export default function LeadForm({ lead, onSaved, onCancel }: Props) {
   const isEdit = !!lead
   const [form, setForm] = useState<FormData>({
+    marca_comercial:        lead?.marca_comercial || 'Linkamp',
     empresa:                lead?.empresa || '',
     nombre:                 lead?.nombre || '',
     telefono:               lead?.telefono || '',
@@ -73,6 +73,19 @@ export default function LeadForm({ lead, onSaved, onCancel }: Props) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
+  function handleMarcaChange(nuevaMarca: MarcaComercial) {
+    setForm(prev => {
+      // Si la categoría actual es incompatible con la nueva marca, limpiarla
+      const categoriaActual = prev.producto_categoria as ProductoCategoria | ''
+      const categoriaOk = !categoriaActual || isCategoriaCompatible(nuevaMarca, categoriaActual as ProductoCategoria)
+      return {
+        ...prev,
+        marca_comercial:   nuevaMarca,
+        producto_categoria: categoriaOk ? prev.producto_categoria : '',
+      }
+    })
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.nombre.trim() || !form.telefono.trim()) {
@@ -85,6 +98,7 @@ export default function LeadForm({ lead, onSaved, onCancel }: Props) {
     const manualDate = artDateToISO(form.proximo_contacto_fecha)
 
     const payload: Record<string, unknown> = {
+      marca_comercial:     form.marca_comercial,
       empresa:             form.empresa.trim() || null,
       nombre:              form.nombre.trim(),
       telefono:            form.telefono.trim(),
@@ -98,13 +112,11 @@ export default function LeadForm({ lead, onSaved, onCancel }: Props) {
       estado:              form.estado,
     }
 
-    // Solo incluir campos de fecha manual si el usuario los tocó
     if (isEdit) {
       if (manualDate) {
         payload.proximo_contacto        = manualDate
         payload.proximo_contacto_manual = true
       } else if (form.proximo_contacto_fecha === '' && lead?.proximo_contacto_manual) {
-        // El usuario borró la fecha manual → limpiar
         payload.proximo_contacto        = null
         payload.proximo_contacto_manual = false
       }
@@ -133,9 +145,33 @@ export default function LeadForm({ lead, onSaved, onCancel }: Props) {
 
   const input = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-petrol-500'
   const label = 'block text-sm font-medium text-gray-700 mb-1'
+  const categorias = categoriasParaMarca(form.marca_comercial)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Marca comercial — siempre visible y primero */}
+      <div>
+        <label className={label}>Marca comercial</label>
+        <div className="flex gap-3">
+          {MARCAS.map(m => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => handleMarcaChange(m)}
+              className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                form.marca_comercial === m
+                  ? m === 'Pampera'
+                    ? 'bg-orange-500 border-orange-500 text-white'
+                    : 'bg-petrol-600 border-petrol-600 text-white'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={label}>Empresa</label>
@@ -158,15 +194,30 @@ export default function LeadForm({ lead, onSaved, onCancel }: Props) {
           <input className={input} value={form.ciudad_provincia} onChange={e => set('ciudad_provincia', e.target.value)} />
         </div>
         <div>
-          <label className={label}>Producto consultado</label>
-          <input className={input} value={form.producto_consultado} onChange={e => set('producto_consultado', e.target.value)} placeholder="Balanza portátil pesaje por ejes" />
-        </div>
-        <div>
           <label className={label}>Categoría de producto</label>
           <select className={input} value={form.producto_categoria} onChange={e => set('producto_categoria', e.target.value)}>
             <option value="">— Seleccionar —</option>
-            {PRODUCTO_CATEGORIAS.map(p => <option key={p} value={p}>{p}</option>)}
+            {categorias.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
+        </div>
+        <div>
+          <label className={label}>
+            {form.producto_categoria === 'Celdas de carga'
+              ? 'Modelo (ej: CAB, CAC, MCB…)'
+              : 'Producto consultado'}
+          </label>
+          <input
+            className={input}
+            value={form.producto_consultado}
+            onChange={e => set('producto_consultado', e.target.value)}
+            placeholder={
+              form.producto_categoria === 'Celdas de carga'
+                ? 'Ej: CAB, CAC, CCD, MCB...'
+                : form.marca_comercial === 'Pampera'
+                  ? 'Ej: Pampera 65 Maicero'
+                  : 'Ej: Balanza portátil pesaje por ejes'
+            }
+          />
         </div>
         <div>
           <label className={label}>Origen</label>

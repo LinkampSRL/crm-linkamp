@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-server'
 import { requireAuth } from '@/lib/api-auth'
 import { buildFlowUpdate, calcProximoContacto } from '@/lib/flow'
-import type { LeadEstado } from '@/lib/types'
+import type { LeadEstado, MarcaComercial, ProductoCategoria } from '@/lib/types'
+import { isCategoriaCompatible } from '@/lib/types'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -21,18 +22,29 @@ export async function PATCH(
 
   const body = await req.json()
 
-  // Obtener estado actual y flag de fecha manual
+  // Obtener estado actual, flag de fecha manual y marca
   const { data: current, error: fetchError } = await supabaseAdmin
     .from('leads')
-    .select('estado, proximo_contacto_manual')
+    .select('estado, proximo_contacto_manual, marca_comercial, producto_categoria')
     .eq('id', id)
     .single()
 
   if (fetchError) return NextResponse.json({ error: 'Lead no encontrado' }, { status: 404 })
 
+  // Validar compatibilidad marca / producto_categoria con los valores resultantes
+  const marcaPatch = (body.marca_comercial ?? current.marca_comercial ?? 'Linkamp') as MarcaComercial
+  const catPatch   = ('producto_categoria' in body ? body.producto_categoria : current.producto_categoria) as ProductoCategoria | null
+  if (catPatch && !isCategoriaCompatible(marcaPatch, catPatch)) {
+    return NextResponse.json(
+      { error: `La categoría "${catPatch}" no es válida para la marca "${marcaPatch}".` },
+      { status: 400 }
+    )
+  }
+
   // Whitelist de campos actualizables
   const allowed: Record<string, unknown> = { updated_at: new Date().toISOString() }
   const FIELDS = [
+    'marca_comercial',
     'empresa','nombre','telefono','email','ciudad_provincia',
     'producto_consultado','producto_categoria','origen','fecha_ingreso',
     'estado','ultimo_contacto','proximo_contacto','proximo_contacto_manual',

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-server'
 import { requireAuth } from '@/lib/api-auth'
-import type { Lead, LeadOrigen, ProductoCategoria } from '@/lib/types'
-import { PRODUCTO_CATEGORIAS, RESPONSABLES } from '@/lib/types'
+import type { Lead, LeadOrigen, MarcaComercial, ProductoCategoria } from '@/lib/types'
+import { MARCAS, PRODUCTO_CATEGORIAS, RESPONSABLES, isCategoriaCompatible } from '@/lib/types'
 
 const ORIGENES_VALIDOS = new Set<string>([
   'Meta', 'Web', 'WhatsApp', 'Referido', 'Agrofy',
-  'Google Ads', 'Mercado Libre', 'Base histórica', 'Base de datos inicial', 'Otro',
+  'Google Ads', 'Mercado Libre', 'Base histórica', 'Base de datos inicial', 'Base de datos BBC', 'Otro',
 ])
 
 const PRODUCTOS_VALIDOS = new Set<string>(PRODUCTO_CATEGORIAS)
@@ -14,6 +14,12 @@ const RESPONSABLES_VALIDOS = new Set<string>(RESPONSABLES)
 
 function str(val: unknown): string {
   return String(val ?? '').trim()
+}
+
+function normalizeMarca(raw: string): MarcaComercial {
+  if (!raw) return 'Linkamp'
+  const found = MARCAS.find(m => m.toLowerCase() === raw.toLowerCase())
+  return found ?? 'Linkamp'
 }
 
 function normalizeOrigen(raw: string): LeadOrigen {
@@ -61,20 +67,27 @@ export async function POST(req: NextRequest) {
       return
     }
 
-    const origenRaw           = str(row.origen ?? row.Origen ?? row.ORIGEN ?? '')
+    const origenRaw            = str(row.origen ?? row.Origen ?? row.ORIGEN ?? '')
     const productoCategoriaRaw = str(row.producto_categoria ?? row.ProductoCategoria ?? row.producto_cat ?? '')
-    const responsableRaw      = str(row.responsable ?? row.Responsable ?? row.RESPONSABLE ?? '')
+    const responsableRaw       = str(row.responsable ?? row.Responsable ?? row.RESPONSABLE ?? '')
+    const marcaRaw             = str(row.marca_comercial ?? row.marca ?? row.Marca ?? '')
+
+    const marca    = normalizeMarca(marcaRaw)
+    const categoria = normalizeProductoCategoria(productoCategoriaRaw)
+    // Si la categoría no es compatible con la marca, usar null
+    const categoriaFinal: ProductoCategoria | null = isCategoriaCompatible(marca, categoria) ? categoria : null
 
     valid.push({
-      empresa:             str(row.empresa ?? row.Empresa ?? row.EMPRESA ?? '') || null,
+      marca_comercial:          marca,
+      empresa:                  str(row.empresa ?? row.Empresa ?? row.EMPRESA ?? '') || null,
       nombre,
       telefono,
-      email:               str(row.email ?? row.Email ?? row.EMAIL ?? '') || null,
-      ciudad_provincia:    str(row.ciudad_provincia ?? row.ciudad ?? row.Ciudad ?? row.CIUDAD ?? '') || null,
-      producto_consultado: str(row.producto_consultado ?? row.producto ?? row.Producto ?? '') || null,
-      producto_categoria:  normalizeProductoCategoria(productoCategoriaRaw),
-      origen:              origenRaw ? normalizeOrigen(origenRaw) : null,
-      fecha_ingreso:       str(row.fecha_ingreso ?? row.FechaIngreso ?? '') || new Date().toISOString().split('T')[0],
+      email:                    str(row.email ?? row.Email ?? row.EMAIL ?? '') || null,
+      ciudad_provincia:         str(row.ciudad_provincia ?? row.ciudad ?? row.Ciudad ?? row.CIUDAD ?? '') || null,
+      producto_consultado:      str(row.producto_consultado ?? row.producto ?? row.Producto ?? '') || null,
+      producto_categoria:       categoriaFinal,
+      origen:                   origenRaw ? normalizeOrigen(origenRaw) : null,
+      fecha_ingreso:            str(row.fecha_ingreso ?? row.FechaIngreso ?? '') || new Date().toISOString().split('T')[0],
       estado:                   'Pendiente de contacto',
       proximo_contacto_manual:  false,
       observaciones:            str(row.observaciones ?? row.Observaciones ?? '') || null,

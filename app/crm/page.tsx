@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { ESTADOS } from '@/lib/estados'
-import { PRODUCTO_CATEGORIAS, RESPONSABLES } from '@/lib/types'
+import { MARCAS, PRODUCTO_CATEGORIAS, RESPONSABLES } from '@/lib/types'
 import MetricCards from '@/components/MetricCards'
 import LeadsTable from '@/components/LeadsTable'
 import LeadModal from '@/components/LeadModal'
@@ -16,8 +16,9 @@ const FILTROS_ESTADO = [
 export default function LeadsPage() {
   const [leads, setLeads]           = useState<Lead[]>([])
   const [templates, setTemplates]   = useState<Template[]>([])
-  const [filtroEstado, setFiltroEstado]       = useState('todos')
-  const [filtroProducto, setFiltroProducto]   = useState('')
+  const [filtroEstado, setFiltroEstado]           = useState('todos')
+  const [filtroMarca, setFiltroMarca]             = useState('')
+  const [filtroProducto, setFiltroProducto]       = useState('')
   const [filtroResponsable, setFiltroResponsable] = useState('')
   const [search, setSearch]         = useState('')
   const [showNew, setShowNew]       = useState(false)
@@ -45,6 +46,7 @@ export default function LeadsPage() {
 
   const filtered = leads.filter(l => {
     const matchEstado      = filtroEstado === 'todos' || l.estado === filtroEstado
+    const matchMarca       = !filtroMarca || l.marca_comercial === filtroMarca
     const matchProducto    = !filtroProducto || l.producto_categoria === filtroProducto
     const matchResponsable = !filtroResponsable || l.responsable === filtroResponsable
     const q = search.toLowerCase()
@@ -53,7 +55,7 @@ export default function LeadsPage() {
       l.nombre.toLowerCase().includes(q) ||
       l.telefono.includes(q) ||
       (l.ciudad_provincia || '').toLowerCase().includes(q)
-    return matchEstado && matchProducto && matchResponsable && matchSearch
+    return matchEstado && matchMarca && matchProducto && matchResponsable && matchSearch
   })
 
   return (
@@ -78,14 +80,22 @@ export default function LeadsPage() {
 
       <MetricCards leads={leads} hoy={hoy} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
         <input
           type="text"
           placeholder="Buscar por empresa, nombre, teléfono o ciudad..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="lg:col-span-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-petrol-500"
+          className="lg:col-span-2 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-petrol-500"
         />
+        <select
+          value={filtroMarca}
+          onChange={e => setFiltroMarca(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-petrol-500"
+        >
+          <option value="">Todas las marcas</option>
+          {MARCAS.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
         <select
           value={filtroEstado}
           onChange={e => setFiltroEstado(e.target.value)}

@@ -4,6 +4,7 @@ import { ESTADOS } from '@/lib/estados'
 import StatusBadge from './StatusBadge'
 import WhatsAppButton from './WhatsAppButton'
 import type { Lead, LeadEstado, Template } from '@/lib/types'
+import { templateIdForLead } from '@/lib/templates'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -31,7 +32,10 @@ export default function LeadsTable({ leads, templates, onEdit, onRefresh }: Prop
   const [updating, setUpdating] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
 
-  const msg1 = templates.find(t => t.id === 'mensaje_1') || null
+  function templateForLead(lead: Lead): Template | null {
+    const id = templateIdForLead(lead.marca_comercial ?? 'Linkamp', lead.estado)
+    return templates.find(t => t.id === id) || null
+  }
 
   async function changeEstado(lead: Lead, newEstado: LeadEstado) {
     setUpdating(lead.id)
@@ -121,7 +125,7 @@ export default function LeadsTable({ leads, templates, onEdit, onRefresh }: Prop
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <WhatsAppButton lead={lead} template={msg1} />
+                  <WhatsAppButton lead={lead} template={templateForLead(lead)} />
                   <select
                     value={lead.estado}
                     disabled={updating === lead.id || deleting === lead.id}

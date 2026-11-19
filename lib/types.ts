@@ -8,9 +8,36 @@ export type LeadEstado =
   | 'Perdido'
   | 'No interesado'
 
-export type ProductoCategoria = 'PWS' | 'LPS' | 'BBC' | 'MCS' | 'BPL' | 'Otros'
+export type MarcaComercial = 'Linkamp' | 'Pampera'
+export const MARCAS: MarcaComercial[] = ['Linkamp', 'Pampera']
 
-export const PRODUCTO_CATEGORIAS: ProductoCategoria[] = ['PWS', 'LPS', 'BBC', 'MCS', 'BPL', 'Otros']
+export type ProductoCategoria =
+  | 'PWS' | 'LPS' | 'BBC' | 'MCS' | 'BPL' | 'Celdas de carga' | 'Otros'
+  | 'Pampera 40' | 'Pampera 65' | 'Pampera 80'
+
+export const PRODUCTO_CATEGORIAS_LINKAMP: ProductoCategoria[] = [
+  'PWS', 'LPS', 'BBC', 'MCS', 'BPL', 'Celdas de carga', 'Otros',
+]
+export const PRODUCTO_CATEGORIAS_PAMPERA: ProductoCategoria[] = [
+  'Pampera 40', 'Pampera 65', 'Pampera 80',
+]
+// Unión completa para validaciones en API/import
+export const PRODUCTO_CATEGORIAS: ProductoCategoria[] = [
+  ...PRODUCTO_CATEGORIAS_LINKAMP,
+  ...PRODUCTO_CATEGORIAS_PAMPERA,
+]
+
+export function categoriasParaMarca(marca: MarcaComercial): ProductoCategoria[] {
+  return marca === 'Pampera' ? PRODUCTO_CATEGORIAS_PAMPERA : PRODUCTO_CATEGORIAS_LINKAMP
+}
+
+export function isCategoriaCompatible(
+  marca: MarcaComercial,
+  categoria: ProductoCategoria | null | undefined
+): boolean {
+  if (!categoria) return true
+  return categoriasParaMarca(marca).includes(categoria)
+}
 
 export const RESPONSABLES = ['Sol', 'Martín', 'Cristian', 'Andrés', 'Thomas'] as const
 export type Responsable = typeof RESPONSABLES[number]
@@ -25,10 +52,12 @@ export type LeadOrigen =
   | 'Mercado Libre'
   | 'Base histórica'
   | 'Base de datos inicial'
+  | 'Base de datos BBC'
   | 'Otro'
 
 export interface Lead {
   id: string
+  marca_comercial: MarcaComercial
   empresa: string | null
   nombre: string
   telefono: string
