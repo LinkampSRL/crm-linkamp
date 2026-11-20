@@ -1,7 +1,7 @@
 # CRM Linkamp — Estado del Proyecto
 
-**Última actualización:** 2026-11-19
-**Commit de referencia:** `20383aa`
+**Última actualización:** 2026-11-20
+**Commit de referencia:** `1734e0d`
 **URL de producción:** https://crm-linkamp.vercel.app
 **Repositorio:** https://github.com/LinkampSRL/crm-linkamp
 
@@ -112,13 +112,19 @@ Los estados siguen un flujo unidireccional. Cambiar el estado desde el CRM actua
 | Estado | Color | `proximo_contacto` automático |
 |--------|-------|-------------------------------|
 | `Pendiente de contacto` | gris | — (sin fecha) |
-| `Recontactar en 48 hs` | amarillo | +2 días calendario a 09:00 ART |
+| `Recontactar en 48 hs` | amarillo | +2 días calendario a las 00:00 ART |
 | `Respondió - cotizar` | verde | — |
-| `Cotización enviada` | amarillo | +2 días calendario a 09:00 ART |
-| `Seguimiento cotización` | amarillo | +2 días calendario a 09:00 ART |
+| `Cotización enviada` | amarillo | +2 días calendario a las 00:00 ART |
+| `Seguimiento cotización` | amarillo | +2 días calendario a las 00:00 ART |
 | `Ganado` | verde oscuro | — |
 | `Perdido` | rojo | — |
 | `No interesado` | rojo | — |
+
+**Regla de seguimiento automático:** los +2 días se cuentan como días calendario completos en Argentina. El timestamp se almacena a las **03:00 UTC (= 00:00 ART)**. Ejemplo: contacto el 18/11 a las 16:30 ART → `proximo_contacto = 2026-11-20T03:00:00Z` → el lead aparece en "Contactar hoy" a partir de las 00:00 ART del 20/11.
+
+**Filtro "Contactar hoy":** compara la fecha calendario ART del `proximo_contacto` (no el timestamp exacto) contra la fecha de hoy en Argentina. Esto garantiza que un lead programado para el 20/11 aparezca durante todo el 20/11, independientemente de la hora almacenada (03:00 UTC o 12:00 UTC). Los leads vencidos de días anteriores también aparecen. La función `shouldContactarHoy()` en `lib/flow.ts` encapsula esta lógica y es la única usada en toda la aplicación (contactar-hoy, dashboard, MetricCards).
+
+**Actualización automática:** "Contactar hoy" se refresca automáticamente al cambiar el día calendario argentino (medianoche ART = 03:00 UTC), sin necesidad de cerrar ni recargar el CRM.
 
 **Fecha manual de próximo contacto:**
 - El usuario puede sobrescribir la fecha desde el formulario (`proximo_contacto_manual = true`).
@@ -190,6 +196,15 @@ Los cambios en plantillas se guardan directamente en Supabase vía `/api/templat
 - Dashboard con secciones por marca y producto
 - Origen `'Base de datos BBC'` como opción independiente
 
+### Hotfix: seguimiento por días calendario — commit `1734e0d`
+- **Problema corregido:** los seguimientos se guardaban a las 12:00 UTC (09:00 ART) y el filtro comparaba timestamps exactos, por lo que un lead programado para el 20/11 no aparecía hasta las 09:00 ART en lugar de las 00:00.
+- `lib/flow.ts`: `nextARTDate()` ahora guarda a las 03:00 UTC (= 00:00 ART).
+- `lib/flow.ts`: nueva función `shouldContactarHoy()` que compara la fecha calendario ART — es la única función de filtrado usada en todo el CRM.
+- `lib/flow.ts`: nuevas utilidades exportadas: `isoToARTCalendarDate()`, `todayARTDate()`, `msUntilMidnightART()`.
+- `app/crm/contactar-hoy/page.tsx`: auto-refresh al cambiar el día calendario ART (timeout hacia las 03:00 UTC).
+- **Sin SQL:** los leads existentes con timestamps a las 12:00 UTC funcionan correctamente con el nuevo filtro sin necesidad de migración.
+- **Tests automatizados:** 38 pruebas en `__tests__/flow.test.ts` con Jest + ts-jest. Cubren: timestamps a distintas horas, vencidos, cruces de mes y año, fechas manuales, estados cerrados, `msUntilMidnightART`. Ejecutar con `npm test`.
+
 ---
 
 ## 6. Estructura de archivos del proyecto
@@ -223,6 +238,9 @@ crm-linkamp/
 │   ├── supabase-server.ts         # Cliente Supabase con service role key
 │   └── api-auth.ts                # Helper de autenticación por cookie
 ├── middleware.ts                  # Redirección / protección de rutas
+├── __tests__/
+│   └── flow.test.ts               # 38 pruebas de lógica de fechas ART y filtros
+├── jest.config.js                 # Configuración de Jest + ts-jest
 ├── supabase_schema.sql            # Schema original (referencia)
 ├── supabase_sprint1.sql           # Migración Sprint 1 (ya aplicada)
 ├── supabase_sprint2.sql           # Migración Sprint 2 (ya aplicada)
@@ -250,6 +268,7 @@ npm run dev
 ### Antes de hacer un push
 
 ```bash
+npm test        # Ejecuta las 38 pruebas automatizadas (debe pasar sin errores)
 npm run build   # Verifica tipos y linting — debe terminar sin errores
 git status      # Revisar que no haya archivos sensibles (.env, .next)
 git add <archivos específicos>   # NUNCA git add -A sin revisar
