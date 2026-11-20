@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { ESTADOS, ESTADO_COLOR } from '@/lib/estados'
 import { MARCAS, PRODUCTO_CATEGORIAS_LINKAMP, PRODUCTO_CATEGORIAS_PAMPERA, RESPONSABLES } from '@/lib/types'
 import type { Lead, LeadEstado, MarcaComercial } from '@/lib/types'
+import { shouldContactarHoy } from '@/lib/flow'
 
 function pct(num: number, den: number) {
   if (den === 0) return '—'
@@ -47,16 +48,12 @@ export default function DashboardPage() {
     return <div className="text-center py-20 text-gray-400">Cargando dashboard...</div>
   }
 
-  const hoy      = new Date().toISOString()
   const total    = leads.length
   const ganados  = leads.filter(l => l.estado === 'Ganado').length
   const perdidos = leads.filter(l => l.estado === 'Perdido' || l.estado === 'No interesado').length
   const cerrados = ganados + perdidos
 
-  const contactarHoy = leads.filter(l =>
-    l.estado === 'Pendiente de contacto' ||
-    (l.proximo_contacto && l.proximo_contacto <= hoy && !['Ganado','Perdido','No interesado'].includes(l.estado))
-  ).length
+  const contactarHoy = leads.filter(l => shouldContactarHoy(l)).length
 
   const pendientes   = leads.filter(l => l.estado === 'Pendiente de contacto').length
   const respondieron = leads.filter(l => l.estado === 'Respondió - cotizar').length

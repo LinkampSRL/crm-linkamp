@@ -7,23 +7,62 @@ interface FlowUpdate {
   updated_at: string
 }
 
-// Calcula la fecha de próximo contacto como "daysAhead días calendario
-// a partir de hoy, a las 09:00 en Argentina (ART = UTC-3, sin DST)".
-// Ejemplo: miércoles 11:00 ART + 2 días → viernes 09:00 ART (= 12:00 UTC).
-function nextARTDate(daysAhead: number): string {
-  const nowUTC = new Date()
-  // Hora actual en ART (UTC-3)
-  const artNow = new Date(nowUTC.getTime() - 3 * 60 * 60 * 1000)
+// Devuelve la fecha calendario de un timestamp ISO en zona Argentina (UTC-3).
+// Ej: "2026-11-20T12:00:00Z" → "2026-11-20"
+//     "2026-11-20T02:30:00Z" → "2026-11-19" (23:30 ART del 19/11)
+export function isoToARTCalendarDate(iso: string): string {
+  const artMs = new Date(iso).getTime() - 3 * 60 * 60 * 1000
+  return new Date(artMs).toISOString().slice(0, 10)
+}
 
-  // Fecha objetivo en ART: año, mes, día + daysAhead
-  const target = new Date(Date.UTC(
+// Devuelve la fecha calendario de hoy en Argentina (YYYY-MM-DD).
+export function todayARTDate(): string {
+  return isoToARTCalendarDate(new Date().toISOString())
+}
+
+// Calcula el timestamp del inicio del día N días después de hoy en Argentina.
+// Se guarda a las 03:00 UTC = 00:00 ART.
+// Ej: contacto el 18/11 a las 16:30 ART → nextARTDate(2) = "2026-11-20T03:00:00Z"
+function nextARTDate(daysAhead: number): string {
+  const artNow = new Date(new Date().getTime() - 3 * 60 * 60 * 1000)
+  return new Date(Date.UTC(
     artNow.getUTCFullYear(),
     artNow.getUTCMonth(),
     artNow.getUTCDate() + daysAhead,
-    12, 0, 0, 0,  // 12:00 UTC = 09:00 ART
-  ))
+    3, 0, 0, 0,  // 03:00 UTC = 00:00 ART
+  )).toISOString()
+}
 
-  return target.toISOString()
+const ESTADOS_CERRADOS = new Set<LeadEstado>(['Ganado', 'Perdido', 'No interesado'])
+
+// Determina si un lead debe aparecer en "Contactar hoy".
+// Compara la fecha calendario ART del proximo_contacto contra hoyART (YYYY-MM-DD),
+// de modo que un timestamp guardado a cualquier hora del día 20/11 aparezca
+// durante todo el 20/11 desde las 00:00 ART.
+export function shouldContactarHoy(
+  lead: { estado: LeadEstado; proximo_contacto: string | null },
+  hoyART: string = todayARTDate()
+): boolean {
+  if (ESTADOS_CERRADOS.has(lead.estado)) return false
+  if (lead.estado === 'Pendiente de contacto') return true
+  if (!lead.proximo_contacto) return false
+  return isoToARTCalendarDate(lead.proximo_contacto) <= hoyART
+}
+
+// Milisegundos hasta la próxima medianoche ART (03:00 UTC).
+// Usado para programar el auto-refresh del filtro al cambiar el día.
+export function msUntilMidnightART(): number {
+  const now = new Date()
+  const next = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    3, 0, 0, 0,
+  ))
+  if (next.getTime() <= now.getTime()) {
+    next.setUTCDate(next.getUTCDate() + 1)
+  }
+  return next.getTime() - now.getTime()
 }
 
 // Devuelve solo el proximo_contacto que correspondería al estado dado,

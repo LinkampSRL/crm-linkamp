@@ -1,17 +1,15 @@
 import type { Lead } from '@/lib/types'
+import { shouldContactarHoy } from '@/lib/flow'
 
 interface Props {
   leads: Lead[]
-  hoy: string
+  hoy: string  // mantenido por compatibilidad de prop
 }
 
-export default function MetricCards({ leads, hoy }: Props) {
+export default function MetricCards({ leads }: Props) {
   const total         = leads.length
   const pendiente     = leads.filter(l => l.estado === 'Pendiente de contacto').length
-  const contactarHoy  = leads.filter(l =>
-    (l.estado === 'Pendiente de contacto') ||
-    (l.proximo_contacto && l.proximo_contacto <= hoy && !['Ganado','Perdido','No interesado'].includes(l.estado))
-  ).length
+  const contactarHoy  = leads.filter(l => shouldContactarHoy(l)).length
   const cotizaciones  = leads.filter(l => l.estado === 'Cotización enviada' || l.estado === 'Seguimiento cotización').length
   const ganados       = leads.filter(l => l.estado === 'Ganado').length
   const perdidos      = leads.filter(l => l.estado === 'Perdido' || l.estado === 'No interesado').length

@@ -7,10 +7,10 @@ import { ESTADOS } from '@/lib/estados'
 import { MARCAS, PRODUCTO_CATEGORIAS, RESPONSABLES } from '@/lib/types'
 import type { Lead, LeadEstado, Template } from '@/lib/types'
 import { templateIdForLead } from '@/lib/templates'
+import { shouldContactarHoy, todayARTDate, msUntilMidnightART } from '@/lib/flow'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 
-const CLOSED = new Set<LeadEstado>(['Ganado', 'Perdido', 'No interesado'])
 
 function fmtDate(iso: string | null) {
   if (!iso) return '—'
@@ -45,7 +45,7 @@ export default function ContactarHoyPage() {
   const [filtroProducto, setFiltroProducto]       = useState('')
   const [filtroResponsable, setFiltroResponsable] = useState('')
 
-  const hoy = new Date().toISOString()
+  const [hoyART, setHoyART] = useState(todayARTDate)
   const todayLabel = format(new Date(), "EEEE d 'de' MMMM", { locale: es })
 
   const fetchData = useCallback(async () => {
@@ -68,12 +68,22 @@ export default function ContactarHoyPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Base: leads que corresponde contactar hoy
-  const contactarHoyBase = leads.filter(l => {
-    if (CLOSED.has(l.estado)) return false
-    if (l.estado === 'Pendiente de contacto') return true
-    return l.proximo_contacto ? l.proximo_contacto <= hoy : false
-  })
+  // Al cambiar el día calendario en Argentina, recarga los leads y actualiza hoyART.
+  // Se reprograma automáticamente cada medianoche ART (03:00 UTC).
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>
+    function scheduleRefresh() {
+      timer = setTimeout(() => {
+        setHoyART(todayARTDate())
+        fetchData()
+        scheduleRefresh()
+      }, msUntilMidnightART())
+    }
+    scheduleRefresh()
+    return () => clearTimeout(timer)
+  }, [fetchData])
+
+  const contactarHoyBase = leads.filter(l => shouldContactarHoy(l, hoyART))
 
   // Aplicar filtros de marca, producto y responsable
   const contactarHoy = contactarHoyBase.filter(l => {
